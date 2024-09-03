@@ -2,21 +2,21 @@
 //! This is fully based off of the following paper eprint.iacr.org/2024/585.pdf.
 //!
 //! TODO list:
-//! - [ ] add simd option
-//! - [ ] implement cyclic_convovle
+//! - [x] add simd option
+//! - [x] implement cyclic_convovle
 //! - [ ] implement negacyclic_convolve
 //! - [ ] implement NTT-based convolution
 
-///
-///
+use std::cmp;
+
 fn linear_convolve(g: &[u32], h: &[u32]) -> Vec<u32> {
     // perhaps could be written using only iterators?
-    let result_len = g.len() + h.len() - 1;
-    let mut res = vec![0; result_len];
+    let mut res: Vec<u32> = vec![0; g.len() + h.len() - 1];
 
     for i in 0..g.len() {
         for j in 0..h.len() {
-            res[i+j] += g[i] * h[j];
+            let deg: usize = i + j
+            res[deg] += g[i] * h[j];
         }
     }
 
@@ -24,7 +24,18 @@ fn linear_convolve(g: &[u32], h: &[u32]) -> Vec<u32> {
 }
 
 fn positive_wrapped_convolve(g: &[u32], h: &[u32]) -> Vec<u32> {
-    todo!();
+    let max_deg: usize = cmp::max(g.len(), h.len());
+    let mut res: Vec<u32> = vec![0; cmp::max(g.len(), h.len())];
+
+    for i in 0..g.len() {
+        for j in 0..h.len() {
+            // here, degree wraps around
+            let deg: usize = (i + j) % max_deg;
+            res[deg] += g[i] * h[j]; 
+        }
+    }
+
+    res
 }
 
 fn negative_wrapped_convolve(g: &[u32], h: &[u32]) -> Vec<u32> {
@@ -58,6 +69,20 @@ mod tests {
         let expected_result: Vec<u32> = vec![5, 16, 34, 60, 61, 52, 32];
 
         linear_convolve(&g, &h)
+            .iter()
+            .zip(expected_result.iter())
+            .map(|(y, expected)| assert_eq!(y, expected));
+    }
+
+    #[test]
+    fn positive_wrapped_convolve_returns_correct_result() {
+        let g = vec![1, 2, 3, 4];
+        let h = vec![5, 6, 7, 8];
+
+        let result: Vec<u32> = linear_convolve(&g, &h);
+        let expected_result: Vec<u32> = vec![66, 68, 66, 60];
+
+        positive_wrapped_convolve(&g, &h)
             .iter()
             .zip(expected_result.iter())
             .map(|(y, expected)| assert_eq!(y, expected));
